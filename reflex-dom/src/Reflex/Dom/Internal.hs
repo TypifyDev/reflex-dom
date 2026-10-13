@@ -1,33 +1,47 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeFamilies #-}
-#if MIN_VERSION_base(4,16,0)
-{-# LANGUAGE UnliftedDatatypes #-}
-#endif
-
+-- |
+-- Effectful port of upstream @Reflex.Dom.Internal@.
+--
+-- Upstream this module bundled two things: a CPP-selected platform
+-- runner @run :: JSM () -> IO ()@ (jsaddle-warp / wkwebview / android /
+-- wasm / webkit2gtk / ghcjs), and a @mainWidget@ family that wrapped
+-- @attachWidget@ under that @run@.
+--
+-- In the Effectful port, 'Reflex.Effectful.DomHost' already provides the
+-- full @mainWidget*@ family with the current @ImmediateWidget x es@
+-- effect surface (via 'Reflex.Effectful.DomHost.withDomHost', which is
+-- jsaddle-warp on GHC). We re-export those directly here so downstream
+-- consumers that do @import Reflex.Dom (mainWidget, …)@ get a working
+-- entrypoint without importing @reflex-dom-core-effectful@ explicitly.
+--
+-- The CPP-selected 'run' is preserved (a) for callers using it directly
+-- as @run $ jsm@ outside of the @mainWidget@ family, and (b) as the
+-- structural slot for per-platform ports still landing — Android,
+-- iOS/WKWebView, WASM, webkit2gtk. Today only the jsaddle-warp path is
+-- fully live end-to-end; the other branches compile 'run' but their
+-- surrounding Effectful runtime is not yet complete.
 module Reflex.Dom.Internal
   ( module Main
   , run
   , mainWidget
-  , mainWidgetWithHead, mainWidgetWithCss, mainWidgetWithHead', mainWidgetInElementById, runApp'
-  , mainHydrationWidgetWithHead, mainHydrationWidgetWithHead'
+  , mainWidgetInBody
+  , mainWidgetWithHead
+  , mainWidgetWithCss
+  , mainWidgetInElementById
   ) where
 
 import Data.ByteString (ByteString)
 import Data.Text (Text)
-import Reflex.Dom.Main as Main hiding
-  ( mainWidget, mainWidgetWithHead, mainWidgetWithCss
-  , mainWidgetWithHead', mainWidgetInElementById, runApp'
-  , mainHydrationWidgetWithHead, mainHydrationWidgetWithHead'
-  )
-import qualified Reflex.Dom.Main as Main
-  ( mainWidget, mainWidgetWithHead, mainWidgetWithCss
-  , mainWidgetWithHead', mainWidgetInElementById, runApp'
-  , mainHydrationWidgetWithHead, mainHydrationWidgetWithHead'
-  )
+
+import Reflex.Effectful.DomHost as Main hiding
+       ( mainWidget, mainWidgetWithHead
+       , mainWidgetWithCss, mainWidgetInElementById
+       )
+import qualified Reflex.Effectful.DomHost as Host
 
 #if defined(ghcjs_HOST_OS)
 run :: a -> a
@@ -65,6 +79,12 @@ run jsm = do
 #else
 import Language.Javascript.JSaddle.WKWebView (run)
 #endif
+-- MTL branch, agent-C will address: this ANDROID branch references
+-- MTL-era @Reflex.Dom.Android.MainWidget@ and @Android.HaskellActivity@
+-- which have not yet been ported into the Effectful stack. The Android
+-- bootstrap belongs to agent-C's scope; we leave the imports intact so
+-- the CPP dispatch structure is preserved and the eventual Android
+-- port has a well-defined slot to land into.
 #elif defined(ANDROID)
 import Android.HaskellActivity
 import Control.Monad
@@ -111,34 +131,31 @@ run :: GHC.TypeError (GHC.Text "Attempting to compile reflex-dom for unsupported
 run = error "unreachable"
 #endif
 
-mainWidget :: (forall x. Widget x ()) -> IO ()
-mainWidget w = run $ Main.mainWidget w
-{-# INLINE mainWidget #-}
+-- Delegate the @mainWidget@ family straight to
+-- 'Reflex.Effectful.DomHost' (jsaddle-warp via 'withDomHost'). See the
+-- module docstring for why the CPP-selected 'run' is preserved above
+-- but not used by these wrappers today.
 
-mainWidgetWithHead :: (forall x. Widget x ()) -> (forall x. Widget x ()) -> IO ()
-mainWidgetWithHead h b = run $ Main.mainWidgetWithHead h b
-{-# INLINE mainWidgetWithHead #-}
+mainWidget :: (forall x es. ImmediateWidget x es) -> IO ()
+mainWidget = Host.mainWidget
 
-mainWidgetWithCss :: ByteString -> (forall x. Widget x ()) -> IO ()
-mainWidgetWithCss css w = run $ Main.mainWidgetWithCss css w
-{-# INLINE mainWidgetWithCss #-}
+mainWidgetInBody :: (forall x es. ImmediateWidget x es) -> IO ()
+mainWidgetInBody = Host.mainWidget
 
-mainWidgetWithHead' :: (a -> Widget () b, b -> Widget () a) -> IO ()
-mainWidgetWithHead' w = run $ Main.mainWidgetWithHead' w
-{-# INLINE mainWidgetWithHead' #-}
+mainWidgetWithHead
+  :: (forall x es. ImmediateWidget x es)
+  -> (forall x es. ImmediateWidget x es)
+  -> IO ()
+mainWidgetWithHead = Host.mainWidgetWithHead
 
-mainWidgetInElementById :: Text -> (forall x. Widget x ()) -> IO ()
-mainWidgetInElementById eid w = run $ Main.mainWidgetInElementById eid w
-{-# INLINE mainWidgetInElementById #-}
+mainWidgetWithCss
+  :: ByteString
+  -> (forall x es. ImmediateWidget x es)
+  -> IO ()
+mainWidgetWithCss = Host.mainWidgetWithCss
 
-runApp' :: (forall x. AppInput DomTimeline -> Widget x (AppOutput DomTimeline)) -> IO ()
-runApp' app = run $ Main.runApp' app
-{-# INLINE runApp' #-}
-
-mainHydrationWidgetWithHead :: (forall x. HydrationWidget x ()) -> (forall x. HydrationWidget x ()) -> IO ()
-mainHydrationWidgetWithHead h b = run $ Main.mainHydrationWidgetWithHead h b
-{-# INLINE mainHydrationWidgetWithHead #-}
-
-mainHydrationWidgetWithHead' :: HydrationWidget () () -> HydrationWidget () () -> IO ()
-mainHydrationWidgetWithHead' h b = run $ Main.mainHydrationWidgetWithHead' h b
-{-# INLINE mainHydrationWidgetWithHead' #-}
+mainWidgetInElementById
+  :: Text
+  -> (forall x es. ImmediateWidget x es)
+  -> IO ()
+mainWidgetInElementById = Host.mainWidgetInElementById

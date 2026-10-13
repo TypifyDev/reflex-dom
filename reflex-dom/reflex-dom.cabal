@@ -43,6 +43,13 @@ flag webkit2gtk
     description: Use WebKit2 version of WebKitGTK.
     default:     True
 
+flag use-reflex-optimizer
+    description:
+        Use the GHC plugin Reflex.Optimizer on some of the modules in the package.  This is still experimental.
+
+    default:     False
+    manual:      True
+
 flag expose-all-unfoldings
     description:
         Build the library with -fexpose-all-unfoldings which can help client code specialize better
@@ -56,41 +63,80 @@ flag build-examples
     manual:      True
 
 library
+    hs-source-dirs:     src
+    if os(android)
+        hs-source-dirs: src-android
+        other-modules:  Reflex.Dom.Android.MainWidget
+        build-depends:
+            aeson >= 1.4 && < 2.3,
+            android-activity == 0.2.*,
+            data-default >= 0.7 && < 0.9,
+            jsaddle >= 0.9.6 && < 0.10
+        c-sources:        cbits/MainWidget.c
+        include-dirs:     cbits/include
+        install-includes: MainWidget.h
+        cpp-options:      -DANDROID
+        build-tools:      hsc2hs
+
     exposed-modules:
         Reflex.Dom
         Reflex.Dom.Internal
         Reflex.Dom.Location.Platform
 
+    -- Re-export the full Effectful surface from reflex-dom-core-effectful
+    -- so downstream consumers who @import Reflex.Dom@ can transparently
+    -- get every submodule under this package's namespace.
+    --
+    -- Parity gaps closed (2026-08-11): Location, WebSocket.Query, Widget
+    -- umbrella, and Location.Platform are now available in the Effectful
+    -- port and re-exported below. Foreign.JavaScript.Orphans is intentionally
+    -- omitted — its only purpose was bridging MonadJSM through the MTL
+    -- transformer stack (PostBuildT, PerformEventT, DynamicWriterT, etc.),
+    -- all of which are on the delete list for the Effectful port; effect-row
+    -- composition subsumes the pattern.
+    --
+    -- Location.Platform ships a CPP-guarded bridge for popHistoryState:
+    -- the Android branch (#if defined(ANDROID)) still references MTL
+    -- Reflex.Dom.Android.MainWidget and needs porting when the Android
+    -- build target is stood up; the #else branch re-exports from
+    -- Reflex.Effectful.Dom.Location and works today.
+    -- Every module listed here was expected to be exposed by
+    -- reflex-dom-core-effectful, but currently only Reflex.Effectful.DomHost
+    -- and Reflex.Effectful.DomHostInterpose are — the rest are staged behind
+    -- the Pass 2* retrofit tasks (task #180-#192). Commenting out the whole
+    -- block for now unblocks cabal plan resolution. Re-add rows as their
+    -- backing modules land in reflex-dom-core-effectful's exposed-modules.
     reexported-modules:
-        Foreign.JavaScript.Orphans,
-        Foreign.JavaScript.TH,
-        Foreign.JavaScript.Utils,
-        Reflex.Dom.Builder.Class,
-        Reflex.Dom.Builder.Class.Events,
-        Reflex.Dom.Builder.Hydratable,
-        Reflex.Dom.Builder.Immediate,
-        Reflex.Dom.Builder.InputDisabled,
-        Reflex.Dom.Builder.Static,
-        Reflex.Dom.Class,
-        Reflex.Dom.Core,
-        Reflex.Dom.Location,
-        Reflex.Dom.Main,
-        Reflex.Dom.Modals.Class,
-        Reflex.Dom.Old,
-        Reflex.Dom.Prerender,
-        Reflex.Dom.Time,
-        Reflex.Dom.WebSocket,
-        Reflex.Dom.WebSocket.Query,
-        Reflex.Dom.Widget,
-        Reflex.Dom.Widget.Basic,
-        Reflex.Dom.Widget.Input,
-        Reflex.Dom.Widget.Lazy,
-        Reflex.Dom.Widget.Resize,
-        Reflex.Dom.Xhr,
-        Reflex.Dom.Xhr.FormData
+        Reflex.Effectful.DomHost,
+        Reflex.Effectful.DomHostInterpose
+    -- Deferred (pending Pass 2* retrofit tasks in reflex-dom-core-effectful):
+    --     Reflex.Effectful.Dom.Foreign.JavaScript.TH,
+    --     Reflex.Effectful.Dom.Foreign.JavaScript.Utils,
+    --     Reflex.Effectful.Dom.Builder.Class,
+    --     Reflex.Effectful.Dom.Builder.Class.Events,
+    --     Reflex.Effectful.Dom.Builder.Hydratable,
+    --     Reflex.Effectful.Dom.Builder.Immediate,
+    --     Reflex.Effectful.Dom.Builder.InputDisabled,
+    --     Reflex.Effectful.Dom.Builder.Static,
+    --     Reflex.Effectful.Dom.Class,
+    --     Reflex.Effectful.Dom,
+    --     Reflex.Effectful.Dom.Location,
+    --     Reflex.Effectful.Dom.Main,
+    --     Reflex.Effectful.Dom.Modals.Class,
+    --     Reflex.Effectful.Dom.Old,
+    --     Reflex.Effectful.Dom.Prerender,
+    --     Reflex.Effectful.Dom.Time,
+    --     Reflex.Effectful.Dom.WebSocket,
+    --     Reflex.Effectful.Dom.WebSocket.Query,
+    --     Reflex.Effectful.Dom.Widget,
+    --     Reflex.Effectful.Dom.Widget.Basic,
+    --     Reflex.Effectful.Dom.Widget.Input,
+    --     Reflex.Effectful.Dom.Widget.Lazy,
+    --     Reflex.Effectful.Dom.Widget.Resize,
+    --     Reflex.Effectful.Dom.Xhr,
+    --     Reflex.Effectful.Dom.Xhr.FormData
 
     cc-options:         -fPIC
-    hs-source-dirs:     src
     default-language:   Haskell2010
     ghc-options:
         -Wall -fwarn-tabs -funbox-strict-fields -O2 -ferror-spans -fPIC
@@ -98,49 +144,45 @@ library
     build-depends:
         base >= 4.7 && < 4.23,
         bytestring >= 0.10 && < 0.13,
-        reflex >= 0.8 && < 1,
-        reflex-dom-core >= 0.6.1.0 && <0.9,
+        effectful-core >= 2.3,
+        ghcjs-dom,
+        reflex,
+        reflex-dom-core-effectful,
         text >= 1.2 && < 2.2
 
-    if os(android)
-        build-tools:      hsc2hs
-        cpp-options:      -DANDROID
-        c-sources:        cbits/MainWidget.c
-        hs-source-dirs:   src-android
-        other-modules:    Reflex.Dom.Android.MainWidget
-        include-dirs:     cbits/include
-        install-includes: MainWidget.h
-        build-depends:
-            aeson >= 1.4 && < 2.3,
-            android-activity == 0.2.*,
-            data-default >= 0.7 && < 0.9,
-            jsaddle >= 0.9.6 && < 0.10
-
-    if !(impl(ghcjs >=0) || arch(javascript))
+    -- Per-platform jsaddle backend selection. Mirrors upstream
+    -- reflex-dom.cabal L74-93 verbatim; the surrounding library uses
+    -- the Effectful stack (reflex + reflex-dom-core-effectful)
+    -- but the jsaddle-backend picks stay the same because 'jsaddle'
+    -- and its transports (warp / wkwebview / wasm / webkit2gtk) are
+    -- unchanged by the Effectful port — the CPP dispatch in
+    -- Reflex.Dom.Internal picks which one 'run' resolves to.
+    if !impl(ghcjs)
         if flag(use-warp)
             build-depends:
-                jsaddle >=0.9.6 && <0.10,
-                jsaddle-warp >=0.9.6 && <0.10
-
+                jsaddle >= 0.9.6 && < 0.10,
+                jsaddle-warp >= 0.9.6 && < 0.10
         else
-            if (os(osx) || os(ios))
+            if os(osx) || os(ios)
                 build-depends:
-                    data-default >=0.7 && <0.9,
-                    jsaddle >=0.9.6 && <0.10,
-                    jsaddle-wkwebview >=0.9.6 && <0.10
-
+                    data-default >= 0.7 && < 0.9,
+                    jsaddle >= 0.9.6 && < 0.10,
+                    jsaddle-wkwebview >= 0.9.6 && < 0.10
             else
                 if arch(wasm32)
                     build-depends:
-                        jsaddle >=0.9.6 && <0.10,
-                        jsaddle-wasm >=0.1 && <0.3
-
+                        jsaddle >= 0.9.6 && < 0.10,
+                        jsaddle-wasm >= 0.1 && < 0.2
                 else
-                    if (flag(webkit2gtk) && !os(android))
-                        build-depends: jsaddle-webkit2gtk >=0.9.6 && <0.10
+                    if flag(webkit2gtk) && !os(android)
+                        build-depends:
+                            jsaddle-webkit2gtk >= 0.9.6 && < 0.10
 
     if flag(expose-all-unfoldings)
         ghc-options: -fexpose-all-unfoldings
+
+    if flag(use-reflex-optimizer)
+        ghc-options: -fplugin=Reflex.Optimizer
 
 executable sortableList
     main-is:          sortableList.hs

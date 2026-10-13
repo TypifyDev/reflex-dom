@@ -6,6 +6,9 @@
 #endif
 #endif
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ExtendedDefaultRules #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 
 module Reflex.Dom.WebSocket.Foreign
   ( module Reflex.Dom.WebSocket.Foreign
@@ -29,6 +32,8 @@ import GHCJS.Foreign (JSType(..), jsTypeOf)
 import Language.Javascript.JSaddle (fun, new, jsg, js2, jss)
 import Language.Javascript.JSaddle.Helper (mutableArrayBufferFromJSVal)
 import Language.Javascript.JSaddle.Types (ghcjsPure)
+
+default (Text)
 
 newtype JSWebSocket = JSWebSocket { unWebSocket :: WebSocket }
 

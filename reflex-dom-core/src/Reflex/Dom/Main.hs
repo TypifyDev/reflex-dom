@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RankNTypes #-}
@@ -30,6 +31,7 @@ import Data.ByteString (ByteString)
 import Data.Dependent.Sum (DSum (..))
 import Data.Foldable (for_)
 import Data.IORef
+import Data.Kind (Type)
 import Data.Maybe
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -61,7 +63,7 @@ import Reflex.Profiled
 #endif
 
 {-# INLINE mainHydrationWidgetWithHead #-}
-mainHydrationWidgetWithHead :: (forall x. HydrationWidget x ()) -> (forall x. HydrationWidget x ()) -> JSM ()
+mainHydrationWidgetWithHead :: (forall (x :: Type). HydrationWidget x ()) -> (forall (x :: Type). HydrationWidget x ()) -> JSM ()
 mainHydrationWidgetWithHead head' body = mainHydrationWidgetWithHead' head' body
 
 {-# INLINABLE mainHydrationWidgetWithHead' #-}
@@ -70,7 +72,7 @@ mainHydrationWidgetWithHead' :: HydrationWidget () () -> HydrationWidget () () -
 mainHydrationWidgetWithHead' = mainHydrationWidgetWithSwitchoverAction' (pure ())
 
 {-# INLINE mainHydrationWidgetWithSwitchoverAction #-}
-mainHydrationWidgetWithSwitchoverAction :: JSM () -> (forall x. HydrationWidget x ()) -> (forall x. HydrationWidget x ()) -> JSM ()
+mainHydrationWidgetWithSwitchoverAction :: JSM () -> (forall (x :: Type). HydrationWidget x ()) -> (forall (x :: Type). HydrationWidget x ()) -> JSM ()
 mainHydrationWidgetWithSwitchoverAction switchoverAction head' body = mainHydrationWidgetWithSwitchoverAction' switchoverAction head' body
 
 {-# INLINABLE mainHydrationWidgetWithSwitchoverAction' #-}
@@ -190,7 +192,7 @@ runHydrationWidgetWithHeadAndBodyWithFailure onFailure switchoverAction app = wi
   liftIO $ processAsyncEvents events fc
 
 {-# INLINE mainWidget #-}
-mainWidget :: (forall x. Widget x ()) -> JSM ()
+mainWidget :: (forall (x :: Type). Widget x ()) -> JSM ()
 mainWidget w = mainWidget' w
 
 {-# INLINABLE mainWidget' #-}
@@ -203,7 +205,7 @@ mainWidget' w = withJSContextSingletonMono $ \jsSing -> do
 
 --TODO: The x's should be unified here
 {-# INLINABLE mainWidgetWithHead #-}
-mainWidgetWithHead :: (forall x. Widget x ()) -> (forall x. Widget x ()) -> JSM ()
+mainWidgetWithHead :: (forall (x :: Type). Widget x ()) -> (forall (x :: Type). Widget x ()) -> JSM ()
 mainWidgetWithHead h b = withJSContextSingletonMono $ \jsSing -> do
   doc <- currentDocumentUnchecked
   headElement <- getHeadUnchecked doc

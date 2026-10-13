@@ -102,6 +102,7 @@ library
         Reflex.Dom.Prerender
         Reflex.Dom.Time
         Reflex.Dom.WebSocket
+        Reflex.Dom.WebSocket.Foreign
         Reflex.Dom.WebSocket.Query
         Reflex.Dom.Widget
         Reflex.Dom.Widget.Basic
@@ -114,7 +115,6 @@ library
     hs-source-dirs:   src
     other-modules:
         Foreign.JavaScript.Internal.Utils
-        Reflex.Dom.WebSocket.Foreign
         Reflex.Dom.Xhr.Foreign
         Reflex.Dom.Xhr.ResponseType
         Reflex.Dom.Xhr.Exception
