@@ -19,5 +19,4 @@ import Reflex.Effectful.DomHost as X hiding
   ( mainWidget, mainWidgetInElementById
   , mainWidgetWithCss, mainWidgetWithHead
   )
-import Reflex.Effectful.DomHostInterpose as X
 import Reflex.Dom.Internal as X

@@ -83,58 +83,9 @@ library
         Reflex.Dom.Internal
         Reflex.Dom.Location.Platform
 
-    -- Re-export the full Effectful surface from reflex-dom-core-effectful
-    -- so downstream consumers who @import Reflex.Dom@ can transparently
-    -- get every submodule under this package's namespace.
-    --
-    -- Parity gaps closed (2026-08-11): Location, WebSocket.Query, Widget
-    -- umbrella, and Location.Platform are now available in the Effectful
-    -- port and re-exported below. Foreign.JavaScript.Orphans is intentionally
-    -- omitted — its only purpose was bridging MonadJSM through the MTL
-    -- transformer stack (PostBuildT, PerformEventT, DynamicWriterT, etc.),
-    -- all of which are on the delete list for the Effectful port; effect-row
-    -- composition subsumes the pattern.
-    --
-    -- Location.Platform ships a CPP-guarded bridge for popHistoryState:
-    -- the Android branch (#if defined(ANDROID)) still references MTL
-    -- Reflex.Dom.Android.MainWidget and needs porting when the Android
-    -- build target is stood up; the #else branch re-exports from
-    -- Reflex.Effectful.Dom.Location and works today.
-    -- Every module listed here was expected to be exposed by
-    -- reflex-dom-core-effectful, but currently only Reflex.Effectful.DomHost
-    -- and Reflex.Effectful.DomHostInterpose are — the rest are staged behind
-    -- the Pass 2* retrofit tasks (task #180-#192). Commenting out the whole
-    -- block for now unblocks cabal plan resolution. Re-add rows as their
-    -- backing modules land in reflex-dom-core-effectful's exposed-modules.
+    -- Expose the Effectful DOM host and its MTL compatibility instances.
     reexported-modules:
-        Reflex.Effectful.DomHost,
-        Reflex.Effectful.DomHostInterpose
-    -- Deferred (pending Pass 2* retrofit tasks in reflex-dom-core-effectful):
-    --     Reflex.Effectful.Dom.Foreign.JavaScript.TH,
-    --     Reflex.Effectful.Dom.Foreign.JavaScript.Utils,
-    --     Reflex.Effectful.Dom.Builder.Class,
-    --     Reflex.Effectful.Dom.Builder.Class.Events,
-    --     Reflex.Effectful.Dom.Builder.Hydratable,
-    --     Reflex.Effectful.Dom.Builder.Immediate,
-    --     Reflex.Effectful.Dom.Builder.InputDisabled,
-    --     Reflex.Effectful.Dom.Builder.Static,
-    --     Reflex.Effectful.Dom.Class,
-    --     Reflex.Effectful.Dom,
-    --     Reflex.Effectful.Dom.Location,
-    --     Reflex.Effectful.Dom.Main,
-    --     Reflex.Effectful.Dom.Modals.Class,
-    --     Reflex.Effectful.Dom.Old,
-    --     Reflex.Effectful.Dom.Prerender,
-    --     Reflex.Effectful.Dom.Time,
-    --     Reflex.Effectful.Dom.WebSocket,
-    --     Reflex.Effectful.Dom.WebSocket.Query,
-    --     Reflex.Effectful.Dom.Widget,
-    --     Reflex.Effectful.Dom.Widget.Basic,
-    --     Reflex.Effectful.Dom.Widget.Input,
-    --     Reflex.Effectful.Dom.Widget.Lazy,
-    --     Reflex.Effectful.Dom.Widget.Resize,
-    --     Reflex.Effectful.Dom.Xhr,
-    --     Reflex.Effectful.Dom.Xhr.FormData
+        Reflex.Effectful.DomHost
 
     cc-options:         -fPIC
     default-language:   Haskell2010
