@@ -1,9 +1,9 @@
 { config, nix-haskell-patches, ... }:
 
 let nix-thunk = config.importing.nix-thunk;
-    deps = with nix-thunk; mapSubdirectories thunkSource ./deps;
+    thunks = with nix-thunk; mapSubdirectories thunkSource ./thunks;
     #
-    nixos-24_11 = import deps."nixos-24.11" {};
+    nixos-24_11 = import thunks."nixos-24.11" {};
 
 in {
   name = "reflex-dom";

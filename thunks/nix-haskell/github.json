@@ -1,0 +1,8 @@
+{
+  "owner": "TypifyDev",
+  "repo": "nix-haskell",
+  "branch": "gs/914-handoff-reflex-dom-inner",
+  "private": false,
+  "rev": "51ab421b97a508f92c0dfa831d1eac63d39d607e",
+  "sha256": "0s68k4rcq4ndq1glm346s543ddqlv4ha9pslq9ssbpk0y5vqp7ic"
+}
